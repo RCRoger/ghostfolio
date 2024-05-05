@@ -18,7 +18,11 @@ import {
   extractNumberFromString,
   getYesterday
 } from '@ghostfolio/common/helper';
-import { ScraperConfiguration } from '@ghostfolio/common/interfaces';
+import {
+  DataProviderInfo,
+  ScraperConfiguration
+} from '@ghostfolio/common/interfaces';
+
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource, SymbolProfile } from '@prisma/client';
 import * as cheerio from 'cheerio';
@@ -39,16 +43,18 @@ export class ManualService implements DataProviderInterface {
     return true;
   }
 
-  public async getAssetProfile(
-    aSymbol: string
-  ): Promise<Partial<SymbolProfile>> {
+  public async getAssetProfile({
+    symbol
+  }: {
+    symbol: string;
+  }): Promise<Partial<SymbolProfile>> {
     const assetProfile: Partial<SymbolProfile> = {
-      dataSource: this.getName(),
-      symbol: aSymbol
+      symbol,
+      dataSource: this.getName()
     };
 
     const [symbolProfile] = await this.symbolProfileService.getSymbolProfiles([
-      { dataSource: this.getName(), symbol: aSymbol }
+      { symbol, dataSource: this.getName() }
     ]);
 
     if (symbolProfile) {
@@ -57,6 +63,12 @@ export class ManualService implements DataProviderInterface {
     }
 
     return assetProfile;
+  }
+
+  public getDataProviderInfo(): DataProviderInfo {
+    return {
+      isPremium: false
+    };
   }
 
   public async getDividends({}: GetDividendsParams) {
@@ -79,7 +91,7 @@ export class ManualService implements DataProviderInterface {
         headers = {},
         selector,
         url
-      } = symbolProfile.scraperConfiguration ?? {};
+      } = symbolProfile?.scraperConfiguration ?? {};
 
       if (defaultMarketPrice) {
         const historical: {
@@ -154,13 +166,15 @@ export class ManualService implements DataProviderInterface {
         }
       });
 
-      for (const symbolProfile of symbolProfiles) {
-        response[symbolProfile.symbol] = {
-          currency: symbolProfile.currency,
+      for (const { currency, symbol } of symbolProfiles) {
+        let marketPrice = marketData.find((marketDataItem) => {
+          return marketDataItem.symbol === symbol;
+        })?.marketPrice;
+
+        response[symbol] = {
+          currency,
+          marketPrice,
           dataSource: this.getName(),
-          marketPrice: marketData.find((marketDataItem) => {
-            return marketDataItem.symbol === symbolProfile.symbol;
-          })?.marketPrice,
           marketState: 'delayed'
         };
       }
@@ -214,7 +228,11 @@ export class ManualService implements DataProviderInterface {
       return !isUUID(symbol);
     });
 
-    return { items };
+    return {
+      items: items.map((item) => {
+        return { ...item, dataProviderInfo: this.getDataProviderInfo() };
+      })
+    };
   }
 
   public async test(scraperConfiguration: ScraperConfiguration) {

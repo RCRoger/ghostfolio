@@ -2,9 +2,11 @@ import { AssetClass, AssetSubClass, Prisma } from '@prisma/client';
 import {
   IsArray,
   IsEnum,
+  IsISO4217CurrencyCode,
   IsObject,
   IsOptional,
-  IsString
+  IsString,
+  IsUrl
 } from 'class-validator';
 
 export class UpdateAssetProfileDto {
@@ -24,7 +26,7 @@ export class UpdateAssetProfileDto {
   @IsOptional()
   countries?: Prisma.InputJsonArray;
 
-  @IsString()
+  @IsISO4217CurrencyCode()
   @IsOptional()
   currency?: string;
 
@@ -45,4 +47,11 @@ export class UpdateAssetProfileDto {
   symbolMapping?: {
     [dataProvider: string]: string;
   };
+
+  @IsOptional()
+  @IsUrl({
+    protocols: ['https'],
+    require_protocol: true
+  })
+  url?: string;
 }

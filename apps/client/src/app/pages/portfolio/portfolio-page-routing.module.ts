@@ -1,6 +1,7 @@
+import { AuthGuard } from '@ghostfolio/client/core/auth.guard';
+
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { AuthGuard } from '@ghostfolio/client/core/auth.guard';
 
 import { PortfolioPageComponent } from './portfolio-page.component';
 
@@ -13,13 +14,6 @@ const routes: Routes = [
         loadChildren: () =>
           import('./analysis/analysis-page.module').then(
             (m) => m.AnalysisPageModule
-          )
-      },
-      {
-        path: 'holdings',
-        loadChildren: () =>
-          import('./holdings/holdings-page.module').then(
-            (m) => m.HoldingsPageModule
           )
       },
       {

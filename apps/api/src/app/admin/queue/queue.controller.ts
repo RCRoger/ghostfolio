@@ -2,6 +2,7 @@ import { HasPermission } from '@ghostfolio/api/decorators/has-permission.decorat
 import { HasPermissionGuard } from '@ghostfolio/api/guards/has-permission.guard';
 import { AdminJobs } from '@ghostfolio/common/interfaces';
 import { permissions } from '@ghostfolio/common/permissions';
+
 import {
   Controller,
   Delete,
@@ -44,5 +45,12 @@ export class QueueController {
   @UseGuards(AuthGuard('jwt'), HasPermissionGuard)
   public async deleteJob(@Param('id') id: string): Promise<void> {
     return this.queueService.deleteJob(id);
+  }
+
+  @Get('job/:id/execute')
+  @HasPermission(permissions.accessAdminControl)
+  @UseGuards(AuthGuard('jwt'), HasPermissionGuard)
+  public async executeJob(@Param('id') id: string): Promise<void> {
+    return this.queueService.executeJob(id);
   }
 }

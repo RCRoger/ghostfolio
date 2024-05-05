@@ -3,6 +3,7 @@ import {
   QUEUE_JOB_STATUS_LIST
 } from '@ghostfolio/common/config';
 import { AdminJobs } from '@ghostfolio/common/interfaces';
+
 import { InjectQueue } from '@nestjs/bull';
 import { Injectable } from '@nestjs/common';
 import { JobStatus, Queue } from 'bull';
@@ -31,6 +32,10 @@ export class QueueService {
     }
   }
 
+  public async executeJob(aId: string) {
+    return (await this.dataGatheringQueue.getJob(aId))?.promote();
+  }
+
   public async getJobs({
     limit = 1000,
     status = QUEUE_JOB_STATUS_LIST
@@ -53,6 +58,7 @@ export class QueueService {
             finishedOn: job.finishedOn,
             id: job.id,
             name: job.name,
+            opts: job.opts,
             stacktrace: job.stacktrace,
             state: await job.getState(),
             timestamp: job.timestamp

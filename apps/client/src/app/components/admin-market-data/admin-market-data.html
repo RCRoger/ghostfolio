@@ -161,19 +161,33 @@
               <ion-icon name="ellipsis-horizontal" />
             </button>
             <mat-menu #assetProfileActionsMenu="matMenu" xPosition="before">
-              <button
+              <a
                 mat-menu-item
-                (click)="onOpenAssetProfileDialog({ dataSource: element.dataSource, symbol: element.symbol })"
+                [queryParams]="{
+                  assetProfileDialog: true,
+                  dataSource: element.dataSource,
+                  symbol: element.symbol
+                }"
+                [routerLink]="[]"
               >
                 <span class="align-items-center d-flex">
                   <ion-icon class="mr-2" name="create-outline" />
                   <span i18n>Edit</span>
                 </span>
-              </button>
+              </a>
               <button
                 mat-menu-item
-                [disabled]="element.activitiesCount !== 0"
-                (click)="onDeleteProfileData({dataSource: element.dataSource, symbol: element.symbol})"
+                [disabled]="
+                  element.activitiesCount !== 0 ||
+                  element.isBenchmark ||
+                  element.symbol.startsWith(ghostfolioScraperApiSymbolPrefix)
+                "
+                (click)="
+                  onDeleteProfileData({
+                    dataSource: element.dataSource,
+                    symbol: element.symbol
+                  })
+                "
               >
                 <span class="align-items-center d-flex">
                   <ion-icon class="mr-2" name="trash-outline" />
@@ -189,21 +203,24 @@
           *matRowDef="let row; columns: displayedColumns"
           class="cursor-pointer"
           mat-row
-          (click)="onOpenAssetProfileDialog({ dataSource: row.dataSource, symbol: row.symbol })"
+          (click)="
+            onOpenAssetProfileDialog({
+              dataSource: row.dataSource,
+              symbol: row.symbol
+            })
+          "
         ></tr>
       </table>
 
       <mat-paginator
         [length]="totalItems"
         [ngClass]="{
-          'd-none':
-            (isLoading && totalItems === 0) ||
-            totalItems <= pageSize
+          'd-none': (isLoading && totalItems === 0) || totalItems <= pageSize
         }"
         [pageSize]="pageSize"
         [showFirstLastButtons]="true"
         (page)="onChangePage($event)"
-      ></mat-paginator>
+      />
 
       <ngx-skeleton-loader
         *ngIf="isLoading && totalItems === 0"

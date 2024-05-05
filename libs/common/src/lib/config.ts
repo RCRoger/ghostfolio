@@ -4,7 +4,6 @@ import ms from 'ms';
 
 export const ghostfolioPrefix = 'GF';
 export const ghostfolioScraperApiSymbolPrefix = `_${ghostfolioPrefix}_`;
-export const ghostfolioCashSymbol = `${ghostfolioScraperApiSymbolPrefix}CASH`;
 export const ghostfolioFearAndGreedIndexDataSource = DataSource.RAPID_API;
 export const ghostfolioFearAndGreedIndexSymbol = `${ghostfolioScraperApiSymbolPrefix}FEAR_AND_GREED_INDEX`;
 
@@ -32,8 +31,11 @@ export const warnColorRgb = {
 };
 
 export const DATA_GATHERING_QUEUE = 'DATA_GATHERING_QUEUE';
-export const DATA_GATHERING_QUEUE_PRIORITY_LOW = Number.MAX_SAFE_INTEGER;
 export const DATA_GATHERING_QUEUE_PRIORITY_HIGH = 1;
+export const DATA_GATHERING_QUEUE_PRIORITY_LOW = Number.MAX_SAFE_INTEGER;
+export const DATA_GATHERING_QUEUE_PRIORITY_MEDIUM = Math.round(
+  DATA_GATHERING_QUEUE_PRIORITY_LOW / 2
+);
 
 export const DEFAULT_CURRENCY = 'USD';
 export const DEFAULT_DATE_FORMAT_MONTH_YEAR = 'MMM yyyy';
@@ -69,7 +71,6 @@ export const GATHER_ASSET_PROFILE_PROCESS_OPTIONS: JobOptions = {
     delay: ms('1 minute'),
     type: 'exponential'
   },
-  priority: DATA_GATHERING_QUEUE_PRIORITY_HIGH,
   removeOnComplete: true
 };
 export const GATHER_HISTORICAL_MARKET_DATA_PROCESS =
@@ -80,7 +81,6 @@ export const GATHER_HISTORICAL_MARKET_DATA_PROCESS_OPTIONS: JobOptions = {
     delay: ms('1 minute'),
     type: 'exponential'
   },
-  priority: DATA_GATHERING_QUEUE_PRIORITY_LOW,
   removeOnComplete: true
 };
 
@@ -97,6 +97,7 @@ export const PROPERTY_COUPONS = 'COUPONS';
 export const PROPERTY_CURRENCIES = 'CURRENCIES';
 export const PROPERTY_DATA_SOURCE_MAPPING = 'DATA_SOURCE_MAPPING';
 export const PROPERTY_DEMO_USER_ID = 'DEMO_USER_ID';
+export const PROPERTY_IS_DATA_GATHERING_ENABLED = 'IS_DATA_GATHERING_ENABLED';
 export const PROPERTY_IS_READ_ONLY_MODE = 'IS_READ_ONLY_MODE';
 export const PROPERTY_IS_USER_SIGNUP_ENABLED = 'IS_USER_SIGNUP_ENABLED';
 export const PROPERTY_SLACK_COMMUNITY_USERS = 'SLACK_COMMUNITY_USERS';
@@ -136,7 +137,8 @@ export const SUPPORTED_LANGUAGE_CODES = [
   'nl',
   'pl',
   'pt',
-  'tr'
+  'tr',
+  'zh'
 ];
 
 export const UNKNOWN_KEY = 'UNKNOWN';

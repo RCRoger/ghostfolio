@@ -1,26 +1,33 @@
+import { getLocale } from '@ghostfolio/common/helper';
+
+import { CommonModule } from '@angular/common';
 import {
+  CUSTOM_ELEMENTS_SCHEMA,
   ChangeDetectionStrategy,
   Component,
   Input,
   OnChanges
 } from '@angular/core';
-import { getLocale } from '@ghostfolio/common/helper';
 import { isNumber } from 'lodash';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 @Component({
-  selector: 'gf-value',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './value.component.html',
-  styleUrls: ['./value.component.scss']
+  imports: [CommonModule, NgxSkeletonLoaderModule],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  selector: 'gf-value',
+  standalone: true,
+  styleUrls: ['./value.component.scss'],
+  templateUrl: './value.component.html'
 })
-export class ValueComponent implements OnChanges {
+export class GfValueComponent implements OnChanges {
   @Input() colorizeSign = false;
   @Input() icon = '';
   @Input() isAbsolute = false;
   @Input() isCurrency = false;
   @Input() isDate = false;
   @Input() isPercent = false;
-  @Input() locale: string | undefined;
+  @Input() locale = getLocale();
   @Input() position = '';
   @Input() precision: number | undefined;
   @Input() size: 'large' | 'medium' | 'small' = 'small';
@@ -128,11 +135,6 @@ export class ValueComponent implements OnChanges {
     this.formattedValue = '';
     this.isNumber = false;
     this.isString = false;
-
-    if (!this.locale) {
-      this.locale = getLocale();
-    }
-
     this.useAbsoluteValue = false;
   }
 }

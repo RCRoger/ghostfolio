@@ -1,3 +1,5 @@
+import { GfValueComponent } from '@ghostfolio/ui/value';
+
 import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -7,7 +9,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RouterModule } from '@angular/router';
-import { GfValueModule } from '@ghostfolio/ui/value';
 
 import { UserAccountSettingsComponent } from './user-account-settings.component';
 
@@ -17,7 +18,7 @@ import { UserAccountSettingsComponent } from './user-account-settings.component'
   imports: [
     CommonModule,
     FormsModule,
-    GfValueModule,
+    GfValueComponent,
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,

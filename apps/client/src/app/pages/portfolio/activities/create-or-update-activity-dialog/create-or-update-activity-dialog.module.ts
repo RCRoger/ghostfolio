@@ -1,3 +1,7 @@
+import { GfAssetProfileIconComponent } from '@ghostfolio/client/components/asset-profile-icon/asset-profile-icon.component';
+import { GfSymbolAutocompleteComponent } from '@ghostfolio/ui/symbol-autocomplete';
+import { GfValueComponent } from '@ghostfolio/ui/value';
+
 import { CommonModule } from '@angular/common';
 import { CUSTOM_ELEMENTS_SCHEMA, NgModule } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -10,9 +14,6 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { GfSymbolIconModule } from '@ghostfolio/client/components/symbol-icon/symbol-icon.module';
-import { GfSymbolAutocompleteModule } from '@ghostfolio/ui/symbol-autocomplete/symbol-autocomplete.module';
-import { GfValueModule } from '@ghostfolio/ui/value';
 
 import { CreateOrUpdateActivityDialog } from './create-or-update-activity-dialog.component';
 
@@ -21,9 +22,9 @@ import { CreateOrUpdateActivityDialog } from './create-or-update-activity-dialog
   imports: [
     CommonModule,
     FormsModule,
-    GfSymbolAutocompleteModule,
-    GfSymbolIconModule,
-    GfValueModule,
+    GfAssetProfileIconComponent,
+    GfSymbolAutocompleteComponent,
+    GfValueComponent,
     MatAutocompleteModule,
     MatButtonModule,
     MatCheckboxModule,

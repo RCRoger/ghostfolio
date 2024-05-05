@@ -5,6 +5,7 @@ const locales = {
   'Asia-Pacific': $localize`Asia-Pacific`,
   ASSET_CLASS: $localize`Asset Class`,
   ASSET_SUB_CLASS: $localize`Asset Sub Class`,
+  BUY_AND_SELL_ACTIVITIES_TOOLTIP: $localize`Buy and sell`,
   CORE: $localize`Core`,
   DATA_IMPORT_AND_EXPORT_TOOLTIP_BASIC: $localize`Switch to Ghostfolio Premium or Ghostfolio Open Source easily`,
   DATA_IMPORT_AND_EXPORT_TOOLTIP_OSS: $localize`Switch to Ghostfolio Premium easily`,
@@ -35,14 +36,15 @@ const locales = {
   LIABILITY: $localize`Liability`,
   SELL: $localize`Sell`,
 
-  // enum AssetClass
+  // AssetClass (enum)
   CASH: $localize`Cash`,
   COMMODITY: $localize`Commodity`,
   EQUITY: $localize`Equity`,
   FIXED_INCOME: $localize`Fixed Income`,
+  LIQUIDITY: $localize`Liquidity`,
   REAL_ESTATE: $localize`Real Estate`,
 
-  // enum AssetSubClass
+  // AssetSubClass (enum)
   BOND: $localize`Bond`,
   CRYPTOCURRENCY: $localize`Cryptocurrency`,
   ETF: $localize`ETF`,
@@ -50,6 +52,10 @@ const locales = {
   PRECIOUS_METAL: $localize`Precious Metal`,
   PRIVATE_EQUITY: $localize`Private Equity`,
   STOCK: $localize`Stock`,
+
+  // Benchmark
+  ALL_TIME_HIGH: 'All time high',
+  BEAR_MARKET: 'Bear market',
 
   // Continents
   Africa: $localize`Africa`,

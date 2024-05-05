@@ -1,4 +1,5 @@
 import { UserWithSettings } from '@ghostfolio/common/types';
+
 import { Role } from '@prisma/client';
 
 export const permissions = {
@@ -6,6 +7,7 @@ export const permissions = {
   accessAssistant: 'accessAssistant',
   createAccess: 'createAccess',
   createAccount: 'createAccount',
+  createAccountBalance: 'createAccountBalance',
   createOrder: 'createOrder',
   createPlatform: 'createPlatform',
   createTag: 'createTag',
@@ -46,6 +48,7 @@ export function getPermissions(aRole: Role): string[] {
         permissions.accessAssistant,
         permissions.createAccess,
         permissions.createAccount,
+        permissions.createAccountBalance,
         permissions.deleteAccountBalance,
         permissions.createOrder,
         permissions.createPlatform,
@@ -74,6 +77,7 @@ export function getPermissions(aRole: Role): string[] {
         permissions.accessAssistant,
         permissions.createAccess,
         permissions.createAccount,
+        permissions.createAccountBalance,
         permissions.createOrder,
         permissions.deleteAccess,
         permissions.deleteAccount,

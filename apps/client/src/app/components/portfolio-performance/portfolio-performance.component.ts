@@ -1,4 +1,14 @@
 import {
+  getLocale,
+  getNumberFormatDecimal,
+  getNumberFormatGroup
+} from '@ghostfolio/common/helper';
+import {
+  PortfolioPerformance,
+  ResponseError
+} from '@ghostfolio/common/interfaces';
+
+import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
@@ -7,14 +17,6 @@ import {
   OnInit,
   ViewChild
 } from '@angular/core';
-import {
-  getNumberFormatDecimal,
-  getNumberFormatGroup
-} from '@ghostfolio/common/helper';
-import {
-  PortfolioPerformance,
-  ResponseError
-} from '@ghostfolio/common/interfaces';
 import { CountUp } from 'countup.js';
 import { isNumber } from 'lodash';
 
@@ -30,7 +32,7 @@ export class PortfolioPerformanceComponent implements OnChanges, OnInit {
   @Input() isAllTimeHigh: boolean;
   @Input() isAllTimeLow: boolean;
   @Input() isLoading: boolean;
-  @Input() locale: string;
+  @Input() locale = getLocale();
   @Input() performance: PortfolioPerformance;
   @Input() showDetails: boolean;
   @Input() unit: string;
@@ -47,12 +49,12 @@ export class PortfolioPerformanceComponent implements OnChanges, OnInit {
         this.value.nativeElement.innerHTML = '';
       }
     } else {
-      if (isNumber(this.performance?.currentValue)) {
-        new CountUp('value', this.performance?.currentValue, {
+      if (isNumber(this.performance?.currentValueInBaseCurrency)) {
+        new CountUp('value', this.performance?.currentValueInBaseCurrency, {
           decimal: getNumberFormatDecimal(this.locale),
           decimalPlaces:
             this.deviceType === 'mobile' &&
-            this.performance?.currentValue >= 100000
+            this.performance?.currentValueInBaseCurrency >= 100000
               ? 0
               : 2,
           duration: 1,
@@ -61,7 +63,7 @@ export class PortfolioPerformanceComponent implements OnChanges, OnInit {
       } else if (this.showDetails === false) {
         new CountUp(
           'value',
-          this.performance?.currentNetPerformancePercent * 100,
+          this.performance?.netPerformancePercentageWithCurrencyEffect * 100,
           {
             decimal: getNumberFormatDecimal(this.locale),
             decimalPlaces: 2,

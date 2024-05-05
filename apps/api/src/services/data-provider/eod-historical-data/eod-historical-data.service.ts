@@ -11,11 +11,14 @@ import {
   IDataProviderHistoricalResponse,
   IDataProviderResponse
 } from '@ghostfolio/api/services/interfaces/interfaces';
+import { SymbolProfileService } from '@ghostfolio/api/services/symbol-profile/symbol-profile.service';
 import {
   DEFAULT_CURRENCY,
   REPLACE_NAME_PARTS
 } from '@ghostfolio/common/config';
 import { DATE_FORMAT, isCurrency } from '@ghostfolio/common/helper';
+import { DataProviderInfo } from '@ghostfolio/common/interfaces';
+
 import { Injectable, Logger } from '@nestjs/common';
 import {
   AssetClass,
@@ -33,28 +36,37 @@ export class EodHistoricalDataService implements DataProviderInterface {
   private readonly URL = 'https://eodhistoricaldata.com/api';
 
   public constructor(
-    private readonly configurationService: ConfigurationService
+    private readonly configurationService: ConfigurationService,
+    private readonly symbolProfileService: SymbolProfileService
   ) {
-    this.apiKey = this.configurationService.get('EOD_HISTORICAL_DATA_API_KEY');
+    this.apiKey = this.configurationService.get('API_KEY_EOD_HISTORICAL_DATA');
   }
 
   public canHandle(symbol: string) {
     return true;
   }
 
-  public async getAssetProfile(
-    aSymbol: string
-  ): Promise<Partial<SymbolProfile>> {
-    const [searchResult] = await this.getSearchResult(aSymbol);
+  public async getAssetProfile({
+    symbol
+  }: {
+    symbol: string;
+  }): Promise<Partial<SymbolProfile>> {
+    const [searchResult] = await this.getSearchResult(symbol);
 
     return {
+      symbol,
       assetClass: searchResult?.assetClass,
       assetSubClass: searchResult?.assetSubClass,
       currency: this.convertCurrency(searchResult?.currency),
       dataSource: this.getName(),
       isin: searchResult?.isin,
-      name: searchResult?.name,
-      symbol: aSymbol
+      name: searchResult?.name
+    };
+  }
+
+  public getDataProviderInfo(): DataProviderInfo {
+    return {
+      isPremium: true
     };
   }
 
@@ -220,58 +232,60 @@ export class EodHistoricalDataService implements DataProviderInterface {
           ? [realTimeResponse]
           : realTimeResponse;
 
-      const searchResponse = await Promise.all(
-        eodHistoricalDataSymbols
-          .filter((symbol) => {
-            return !symbol.endsWith('.FOREX');
-          })
-          .map((symbol) => {
-            return this.search({ query: symbol });
-          })
+      const symbolProfiles = await this.symbolProfileService.getSymbolProfiles(
+        symbols.map((symbol) => {
+          return {
+            symbol,
+            dataSource: this.getName()
+          };
+        })
       );
 
-      const lookupItems = searchResponse.flat().map(({ items }) => {
-        return items[0];
-      });
+      for (const { close, code, timestamp } of quotes) {
+        let currency: string;
 
-      response = quotes.reduce(
-        (
-          result: { [symbol: string]: IDataProviderResponse },
-          { close, code, timestamp }
-        ) => {
-          const currency = lookupItems.find((lookupItem) => {
-            return lookupItem.symbol === code;
+        if (code.endsWith('.FOREX')) {
+          currency = this.convertFromEodSymbol(code)?.replace(
+            DEFAULT_CURRENCY,
+            ''
+          );
+        }
+
+        if (!currency) {
+          currency = symbolProfiles.find(({ symbol }) => {
+            return symbol === code;
           })?.currency;
+        }
 
-          if (isNumber(close)) {
-            result[this.convertFromEodSymbol(code)] = {
-              currency:
-                currency ??
-                this.convertFromEodSymbol(code)?.replace(DEFAULT_CURRENCY, ''),
-              dataSource: this.getName(),
-              marketPrice: close,
-              marketState: isToday(new Date(timestamp * 1000))
-                ? 'open'
-                : 'closed'
-            };
-          } else {
-            Logger.error(
-              `Could not get quote for ${this.convertFromEodSymbol(code)} (${this.getName()})`,
-              'EodHistoricalDataService'
-            );
+        if (!currency) {
+          const { items } = await this.search({ query: code });
+
+          if (items.length === 1) {
+            currency = items[0].currency;
           }
+        }
 
-          return result;
-        },
-        {}
-      );
+        if (isNumber(close)) {
+          response[this.convertFromEodSymbol(code)] = {
+            currency,
+            dataSource: this.getName(),
+            marketPrice: close,
+            marketState: isToday(new Date(timestamp * 1000)) ? 'open' : 'closed'
+          };
+        } else {
+          Logger.error(
+            `Could not get quote for ${this.convertFromEodSymbol(code)} (${this.getName()})`,
+            'EodHistoricalDataService'
+          );
+        }
+      }
 
       return response;
     } catch (error) {
       let message = error;
 
       if (error?.code === 'ABORT_ERR') {
-        message = `RequestError: The operation was aborted because the request to the data provider took more than ${this.configurationService.get(
+        message = `RequestError: The operation to get the quotes was aborted because the request to the data provider took more than ${this.configurationService.get(
           'REQUEST_TIMEOUT'
         )}ms`;
       }
@@ -312,7 +326,8 @@ export class EodHistoricalDataService implements DataProviderInterface {
               dataSource,
               name,
               symbol,
-              currency: this.convertCurrency(currency)
+              currency: this.convertCurrency(currency),
+              dataProviderInfo: this.getDataProviderInfo()
             };
           }
         )
@@ -423,7 +438,7 @@ export class EodHistoricalDataService implements DataProviderInterface {
       let message = error;
 
       if (error?.code === 'ABORT_ERR') {
-        message = `RequestError: The operation was aborted because the request to the data provider took more than ${this.configurationService.get(
+        message = `RequestError: The operation to search for ${aQuery} was aborted because the request to the data provider took more than ${this.configurationService.get(
           'REQUEST_TIMEOUT'
         )}ms`;
       }
@@ -453,7 +468,7 @@ export class EodHistoricalDataService implements DataProviderInterface {
         assetSubClass = AssetSubClass.STOCK;
         break;
       case 'currency':
-        assetClass = AssetClass.CASH;
+        assetClass = AssetClass.LIQUIDITY;
 
         if (Exchange?.toLowerCase() === 'cc') {
           assetSubClass = AssetSubClass.CRYPTOCURRENCY;

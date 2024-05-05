@@ -1,3 +1,9 @@
+import { CreateTagDto } from '@ghostfolio/api/app/tag/create-tag.dto';
+import { UpdateTagDto } from '@ghostfolio/api/app/tag/update-tag.dto';
+import { AdminService } from '@ghostfolio/client/services/admin.service';
+import { DataService } from '@ghostfolio/client/services/data.service';
+import { UserService } from '@ghostfolio/client/services/user/user.service';
+
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -10,11 +16,6 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { ActivatedRoute, Router } from '@angular/router';
-import { CreateTagDto } from '@ghostfolio/api/app/tag/create-tag.dto';
-import { UpdateTagDto } from '@ghostfolio/api/app/tag/update-tag.dto';
-import { AdminService } from '@ghostfolio/client/services/admin.service';
-import { DataService } from '@ghostfolio/client/services/data.service';
-import { UserService } from '@ghostfolio/client/services/user/user.service';
 import { Tag } from '@prisma/client';
 import { get } from 'lodash';
 import { DeviceDetectorService } from 'ngx-device-detector';
@@ -141,9 +142,7 @@ export class AdminTagComponent implements OnInit, OnDestroy {
     dialogRef
       .afterClosed()
       .pipe(takeUntil(this.unsubscribeSubject))
-      .subscribe((data) => {
-        const tag: CreateTagDto = data?.tag;
-
+      .subscribe((tag: CreateTagDto | null) => {
         if (tag) {
           this.adminService
             .postTag(tag)
@@ -179,9 +178,7 @@ export class AdminTagComponent implements OnInit, OnDestroy {
     dialogRef
       .afterClosed()
       .pipe(takeUntil(this.unsubscribeSubject))
-      .subscribe((data) => {
-        const tag: UpdateTagDto = data?.tag;
-
+      .subscribe((tag: UpdateTagDto | null) => {
         if (tag) {
           this.adminService
             .putTag(tag)

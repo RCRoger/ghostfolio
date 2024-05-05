@@ -14,6 +14,10 @@ import { DataProviderService } from '@ghostfolio/api/services/data-provider/data
 import { ExchangeRateDataService } from '@ghostfolio/api/services/exchange-rate-data/exchange-rate-data.service';
 import { SymbolProfileService } from '@ghostfolio/api/services/symbol-profile/symbol-profile.service';
 import {
+  DATA_GATHERING_QUEUE_PRIORITY_HIGH,
+  DATA_GATHERING_QUEUE_PRIORITY_MEDIUM
+} from '@ghostfolio/common/config';
+import {
   DATE_FORMAT,
   getAssetProfileIdentifier,
   parseDate
@@ -21,11 +25,13 @@ import {
 import { UniqueAsset } from '@ghostfolio/common/interfaces';
 import {
   AccountWithPlatform,
-  OrderWithAccount
+  OrderWithAccount,
+  UserWithSettings
 } from '@ghostfolio/common/types';
+
 import { Injectable } from '@nestjs/common';
 import { DataSource, Prisma, SymbolProfile } from '@prisma/client';
-import Big from 'big.js';
+import { Big } from 'big.js';
 import { endOfToday, format, isAfter, isSameSecond, parseISO } from 'date-fns';
 import { uniqBy } from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
@@ -110,12 +116,13 @@ export class ImportService {
           accountId: Account?.id,
           accountUserId: undefined,
           comment: undefined,
+          currency: undefined,
           createdAt: undefined,
           fee: 0,
           feeInBaseCurrency: 0,
           id: assetProfile.id,
           isDraft: false,
-          SymbolProfile: <SymbolProfile>(<unknown>assetProfile),
+          SymbolProfile: assetProfile,
           symbolProfileId: assetProfile.id,
           type: 'DIVIDEND',
           unitPrice: marketPrice,
@@ -138,17 +145,16 @@ export class ImportService {
     activitiesDto,
     isDryRun = false,
     maxActivitiesToImport,
-    userCurrency,
-    userId
+    user
   }: {
     accountsDto: Partial<CreateAccountDto>[];
     activitiesDto: Partial<CreateOrderDto>[];
     isDryRun?: boolean;
     maxActivitiesToImport: number;
-    userCurrency: string;
-    userId: string;
+    user: UserWithSettings;
   }): Promise<Activity[]> {
     const accountIdMapping: { [oldAccountId: string]: string } = {};
+    const userCurrency = user.Settings.settings.baseCurrency;
 
     if (!isDryRun && accountsDto?.length) {
       const [existingAccounts, existingPlatforms] = await Promise.all([
@@ -171,7 +177,7 @@ export class ImportService {
         );
 
         // If there is no account or if the account belongs to a different user then create a new account
-        if (!accountWithSameId || accountWithSameId.userId !== userId) {
+        if (!accountWithSameId || accountWithSameId.userId !== user.id) {
           let oldAccountId: string;
           const platformId = account.platformId;
 
@@ -184,7 +190,7 @@ export class ImportService {
 
           let accountObject: Prisma.AccountCreateInput = {
             ...account,
-            User: { connect: { id: userId } }
+            User: { connect: { id: user.id } }
           };
 
           if (
@@ -200,7 +206,7 @@ export class ImportService {
 
           const newAccount = await this.accountService.createAccount(
             accountObject,
-            userId
+            user.id
           );
 
           // Store the new to old account ID mappings for updating activities
@@ -231,16 +237,17 @@ export class ImportService {
 
     const assetProfiles = await this.validateActivities({
       activitiesDto,
-      maxActivitiesToImport
+      maxActivitiesToImport,
+      user
     });
 
     const activitiesExtendedWithErrors = await this.extendActivitiesWithErrors({
       activitiesDto,
       userCurrency,
-      userId
+      userId: user.id
     });
 
-    const accounts = (await this.accountService.getAccounts(userId)).map(
+    const accounts = (await this.accountService.getAccounts(user.id)).map(
       ({ id, name }) => {
         return { id, name };
       }
@@ -259,6 +266,7 @@ export class ImportService {
       {
         accountId,
         comment,
+        currency,
         date,
         error,
         fee,
@@ -283,7 +291,6 @@ export class ImportService {
         assetSubClass,
         countries,
         createdAt,
-        currency,
         dataSource,
         figi,
         figiComposite,
@@ -340,12 +347,12 @@ export class ImportService {
       if (isDryRun) {
         order = {
           comment,
+          currency,
           date,
           fee,
           quantity,
           type,
           unitPrice,
-          userId,
           accountId: validatedAccount?.id,
           accountUserId: undefined,
           createdAt: new Date(),
@@ -356,7 +363,6 @@ export class ImportService {
             assetSubClass,
             countries,
             createdAt,
-            currency,
             dataSource,
             figi,
             figiComposite,
@@ -370,11 +376,13 @@ export class ImportService {
             symbolMapping,
             updatedAt,
             url,
+            currency: assetProfile.currency,
             comment: assetProfile.comment
           },
           Account: validatedAccount,
           symbolProfileId: undefined,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          userId: user.id
         };
       } else {
         if (error) {
@@ -388,14 +396,13 @@ export class ImportService {
           quantity,
           type,
           unitPrice,
-          userId,
           accountId: validatedAccount?.id,
           SymbolProfile: {
             connectOrCreate: {
               create: {
-                currency,
                 dataSource,
-                symbol
+                symbol,
+                currency: assetProfile.currency
               },
               where: {
                 dataSource_symbol: {
@@ -406,8 +413,14 @@ export class ImportService {
             }
           },
           updateAccountBalance: false,
-          User: { connect: { id: userId } }
+          User: { connect: { id: user.id } },
+          userId: user.id
         });
+
+        if (order.SymbolProfile?.symbol) {
+          // Update symbol that may have been assigned in createOrder()
+          assetProfile.symbol = order.SymbolProfile.symbol;
+        }
       }
 
       const value = new Big(quantity).mul(unitPrice).toNumber();
@@ -418,14 +431,14 @@ export class ImportService {
         value,
         feeInBaseCurrency: this.exchangeRateDataService.toCurrency(
           fee,
-          currency,
+          assetProfile.currency,
           userCurrency
         ),
         // @ts-ignore
         SymbolProfile: assetProfile,
         valueInBaseCurrency: this.exchangeRateDataService.toCurrency(
           value,
-          currency,
+          assetProfile.currency,
           userCurrency
         )
       });
@@ -444,15 +457,16 @@ export class ImportService {
         });
       });
 
-      this.dataGatheringService.gatherSymbols(
-        uniqueActivities.map(({ date, SymbolProfile }) => {
+      this.dataGatheringService.gatherSymbols({
+        dataGatheringItems: uniqueActivities.map(({ date, SymbolProfile }) => {
           return {
             date,
             dataSource: SymbolProfile.dataSource,
             symbol: SymbolProfile.symbol
           };
-        })
-      );
+        }),
+        priority: DATA_GATHERING_QUEUE_PRIORITY_HIGH
+      });
     }
 
     return activities;
@@ -519,22 +533,14 @@ export class ImportService {
             currency,
             dataSource,
             symbol,
-            assetClass: null,
-            assetSubClass: null,
-            comment: null,
-            countries: null,
+            activitiesCount: undefined,
+            assetClass: undefined,
+            assetSubClass: undefined,
+            countries: undefined,
             createdAt: undefined,
-            figi: null,
-            figiComposite: null,
-            figiShareClass: null,
             id: undefined,
-            isin: null,
-            name: null,
-            scraperConfiguration: null,
-            sectors: null,
-            symbolMapping: null,
-            updatedAt: undefined,
-            url: null
+            sectors: undefined,
+            updatedAt: undefined
           }
         };
       }
@@ -553,10 +559,12 @@ export class ImportService {
 
   private async validateActivities({
     activitiesDto,
-    maxActivitiesToImport
+    maxActivitiesToImport,
+    user
   }: {
     activitiesDto: Partial<CreateOrderDto>[];
     maxActivitiesToImport: number;
+    user: UserWithSettings;
   }) {
     if (activitiesDto?.length > maxActivitiesToImport) {
       throw new Error(`Too many activities (${maxActivitiesToImport} at most)`);
@@ -566,54 +574,58 @@ export class ImportService {
       [assetProfileIdentifier: string]: Partial<SymbolProfile>;
     } = {};
 
-    const uniqueActivitiesDto = uniqBy(
-      activitiesDto,
-      ({ dataSource, symbol }) => {
-        return getAssetProfileIdentifier({ dataSource, symbol });
-      }
-    );
-
     for (const [
       index,
       { currency, dataSource, symbol, type }
-    ] of uniqueActivitiesDto.entries()) {
+    ] of activitiesDto.entries()) {
       if (!this.configurationService.get('DATA_SOURCES').includes(dataSource)) {
         throw new Error(
           `activities.${index}.dataSource ("${dataSource}") is not valid`
         );
       }
 
-      const assetProfile = {
-        currency,
-        ...(
-          await this.dataProviderService.getAssetProfiles([
-            { dataSource, symbol }
-          ])
-        )?.[symbol]
-      };
+      if (
+        this.configurationService.get('ENABLE_FEATURE_SUBSCRIPTION') &&
+        user.subscription.type === 'Basic'
+      ) {
+        const dataProvider = this.dataProviderService.getDataProvider(
+          DataSource[dataSource]
+        );
 
-      if (type === 'BUY' || type === 'DIVIDEND' || type === 'SELL') {
-        if (!assetProfile?.name) {
+        if (dataProvider.getDataProviderInfo().isPremium) {
           throw new Error(
-            `activities.${index}.symbol ("${symbol}") is not valid for the specified data source ("${dataSource}")`
-          );
-        }
-
-        if (
-          assetProfile.currency !== currency &&
-          !this.exchangeRateDataService.hasCurrencyPair(
-            currency,
-            assetProfile.currency
-          )
-        ) {
-          throw new Error(
-            `activities.${index}.currency ("${currency}") does not match with "${assetProfile.currency}" and no exchange rate is available from "${currency}" to "${assetProfile.currency}"`
+            `activities.${index}.dataSource ("${dataSource}") is not valid`
           );
         }
       }
 
-      assetProfiles[getAssetProfileIdentifier({ dataSource, symbol })] =
-        assetProfile;
+      if (!assetProfiles[getAssetProfileIdentifier({ dataSource, symbol })]) {
+        const assetProfile = {
+          currency,
+          ...(
+            await this.dataProviderService.getAssetProfiles([
+              { dataSource, symbol }
+            ])
+          )?.[symbol]
+        };
+
+        if (type === 'BUY' || type === 'DIVIDEND' || type === 'SELL') {
+          if (!assetProfile?.name) {
+            throw new Error(
+              `activities.${index}.symbol ("${symbol}") is not valid for the specified data source ("${dataSource}")`
+            );
+          }
+
+          if (assetProfile.currency !== currency) {
+            throw new Error(
+              `activities.${index}.currency ("${currency}") does not match with currency of ${assetProfile.symbol} ("${assetProfile.currency}")`
+            );
+          }
+        }
+
+        assetProfiles[getAssetProfileIdentifier({ dataSource, symbol })] =
+          assetProfile;
+      }
     }
 
     return assetProfiles;

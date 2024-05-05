@@ -17,9 +17,10 @@ import {
 import { DATE_FORMAT, getStartOfUtcDate } from '@ghostfolio/common/helper';
 import { UniqueAsset } from '@ghostfolio/common/interfaces';
 import type { Granularity, UserWithSettings } from '@ghostfolio/common/types';
+
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DataSource, MarketData, SymbolProfile } from '@prisma/client';
-import Big from 'big.js';
+import { Big } from 'big.js';
 import { eachDayOfInterval, format, isValid } from 'date-fns';
 import { groupBy, isEmpty, isNumber, uniqWith } from 'lodash';
 import ms from 'ms';
@@ -91,7 +92,9 @@ export class DataProviderService {
 
       for (const symbol of symbols) {
         const promise = Promise.resolve(
-          this.getDataProvider(DataSource[dataSource]).getAssetProfile(symbol)
+          this.getDataProvider(DataSource[dataSource]).getAssetProfile({
+            symbol
+          })
         );
 
         promises.push(
@@ -105,6 +108,31 @@ export class DataProviderService {
     await Promise.all(promises);
 
     return response;
+  }
+
+  public getDataProvider(providerName: DataSource) {
+    for (const dataProviderInterface of this.dataProviderInterfaces) {
+      if (this.dataProviderMapping[dataProviderInterface.getName()]) {
+        const mappedDataProviderInterface = this.dataProviderInterfaces.find(
+          (currentDataProviderInterface) => {
+            return (
+              currentDataProviderInterface.getName() ===
+              this.dataProviderMapping[dataProviderInterface.getName()]
+            );
+          }
+        );
+
+        if (mappedDataProviderInterface) {
+          return mappedDataProviderInterface;
+        }
+      }
+
+      if (dataProviderInterface.getName() === providerName) {
+        return dataProviderInterface;
+      }
+    }
+
+    throw new Error('No data provider has been found.');
   }
 
   public getDataSourceForExchangeRates(): DataSource {
@@ -176,13 +204,14 @@ export class DataProviderService {
     });
 
     try {
-      const queryRaw = `SELECT *
-                        FROM "MarketData"
-                        WHERE "dataSource" IN ('${dataSources.join(`','`)}')
-                          AND "symbol" IN ('${symbols.join(
-                            `','`
-                          )}') ${granularityQuery} ${rangeQuery}
-                        ORDER BY date;`;
+      const queryRaw = `
+        SELECT *
+        FROM "MarketData"
+        WHERE "dataSource" IN ('${dataSources.join(`','`)}')
+          AND "symbol" IN ('${symbols.join(
+            `','`
+          )}') ${granularityQuery} ${rangeQuery}
+        ORDER BY date;`;
 
       const marketDataByGranularity: MarketData[] =
         await this.prismaService.$queryRawUnsafe(queryRaw);
@@ -204,15 +233,17 @@ export class DataProviderService {
     }
   }
 
-  public async getHistoricalRaw(
-    aDataGatheringItems: UniqueAsset[],
-    from: Date,
-    to: Date
-  ): Promise<{
+  public async getHistoricalRaw({
+    dataGatheringItems,
+    from,
+    to
+  }: {
+    dataGatheringItems: UniqueAsset[];
+    from: Date;
+    to: Date;
+  }): Promise<{
     [symbol: string]: { [date: string]: IDataProviderHistoricalResponse };
   }> {
-    let dataGatheringItems = aDataGatheringItems;
-
     for (const { currency, rootCurrency } of DERIVED_CURRENCIES) {
       if (
         this.hasCurrency({
@@ -301,6 +332,8 @@ export class DataProviderService {
       }
     } catch (error) {
       Logger.error(error, 'DataProviderService');
+
+      throw error;
     }
 
     return result;
@@ -309,11 +342,13 @@ export class DataProviderService {
   public async getQuotes({
     items,
     requestTimeout,
-    useCache = true
+    useCache = true,
+    user
   }: {
     items: UniqueAsset[];
     requestTimeout?: number;
     useCache?: boolean;
+    user?: UserWithSettings;
   }): Promise<{
     [symbol: string]: IDataProviderResponse;
   }> {
@@ -364,7 +399,8 @@ export class DataProviderService {
           numberOfItemsInCache > 1 ? 's' : ''
         } from cache in ${((performance.now() - startTimeTotal) / 1000).toFixed(
           3
-        )} seconds`
+        )} seconds`,
+        'DataProviderService'
       );
     }
 
@@ -378,6 +414,14 @@ export class DataProviderService {
       itemsGroupedByDataSource
     )) {
       const dataProvider = this.getDataProvider(DataSource[dataSource]);
+
+      if (
+        dataProvider.getDataProviderInfo().isPremium &&
+        this.configurationService.get('ENABLE_FEATURE_SUBSCRIPTION') &&
+        user?.subscription.type === 'Basic'
+      ) {
+        continue;
+      }
 
       const symbols = dataGatheringItems.map((dataGatheringItem) => {
         return dataGatheringItem.symbol;
@@ -462,7 +506,8 @@ export class DataProviderService {
               } from ${dataSource} in ${(
                 (performance.now() - startTimeDataSource) /
                 1000
-              ).toFixed(3)} seconds`
+              ).toFixed(3)} seconds`,
+              'DataProviderService'
             );
 
             try {
@@ -492,14 +537,15 @@ export class DataProviderService {
 
     await Promise.all(promises);
 
-    Logger.debug('------------------------------------------------');
+    Logger.debug('--------------------------------------------------------');
     Logger.debug(
       `Fetched ${items.length} quote${items.length > 1 ? 's' : ''} in ${(
         (performance.now() - startTimeTotal) /
         1000
-      ).toFixed(3)} seconds`
+      ).toFixed(3)} seconds`,
+      'DataProviderService'
     );
-    Logger.debug('================================================');
+    Logger.debug('========================================================');
 
     return response;
   }
@@ -520,20 +566,15 @@ export class DataProviderService {
       return { items: lookupItems };
     }
 
-    let dataSources = this.configurationService.get('DATA_SOURCES');
-
-    if (
-      this.configurationService.get('ENABLE_FEATURE_SUBSCRIPTION') &&
-      user.subscription.type === 'Basic'
-    ) {
-      dataSources = dataSources.filter((dataSource) => {
-        return !this.isPremiumDataSource(DataSource[dataSource]);
+    let dataProviderServices = this.configurationService
+      .get('DATA_SOURCES')
+      .map((dataSource) => {
+        return this.getDataProvider(DataSource[dataSource]);
       });
-    }
 
-    for (const dataSource of dataSources) {
+    for (const dataProviderService of dataProviderServices) {
       promises.push(
-        this.getDataProvider(DataSource[dataSource]).search({
+        dataProviderService.search({
           includeIndices,
           query
         })
@@ -555,36 +596,21 @@ export class DataProviderService {
       })
       .sort(({ name: name1 }, { name: name2 }) => {
         return name1?.toLowerCase().localeCompare(name2?.toLowerCase());
+      })
+      .map((lookupItem) => {
+        if (
+          !this.configurationService.get('ENABLE_FEATURE_SUBSCRIPTION') ||
+          user.subscription.type === 'Premium'
+        ) {
+          lookupItem.dataProviderInfo.isPremium = false;
+        }
+
+        return lookupItem;
       });
 
     return {
       items: filteredItems
     };
-  }
-
-  private getDataProvider(providerName: DataSource) {
-    for (const dataProviderInterface of this.dataProviderInterfaces) {
-      if (this.dataProviderMapping[dataProviderInterface.getName()]) {
-        const mappedDataProviderInterface = this.dataProviderInterfaces.find(
-          (currentDataProviderInterface) => {
-            return (
-              currentDataProviderInterface.getName() ===
-              this.dataProviderMapping[dataProviderInterface.getName()]
-            );
-          }
-        );
-
-        if (mappedDataProviderInterface) {
-          return mappedDataProviderInterface;
-        }
-      }
-
-      if (dataProviderInterface.getName() === providerName) {
-        return dataProviderInterface;
-      }
-    }
-
-    throw new Error('No data provider has been found.');
   }
 
   private hasCurrency({
@@ -600,14 +626,6 @@ export class DataProviderService {
         symbol === currency
       );
     });
-  }
-
-  private isPremiumDataSource(aDataSource: DataSource) {
-    const premiumDataSources: DataSource[] = [
-      DataSource.EOD_HISTORICAL_DATA,
-      DataSource.FINANCIAL_MODELING_PREP
-    ];
-    return premiumDataSources.includes(aDataSource);
   }
 
   private transformHistoricalData({

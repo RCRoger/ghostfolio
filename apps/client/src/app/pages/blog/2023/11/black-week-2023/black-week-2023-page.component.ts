@@ -1,11 +1,12 @@
+import { GfPremiumIndicatorComponent } from '@ghostfolio/ui/premium-indicator';
+
 import { Component } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterModule } from '@angular/router';
-import { GfPremiumIndicatorModule } from '@ghostfolio/ui/premium-indicator';
 
 @Component({
   host: { class: 'page' },
-  imports: [GfPremiumIndicatorModule, MatButtonModule, RouterModule],
+  imports: [GfPremiumIndicatorComponent, MatButtonModule, RouterModule],
   selector: 'gf-black-week-2023-page',
   standalone: true,
   templateUrl: './black-week-2023-page.html'

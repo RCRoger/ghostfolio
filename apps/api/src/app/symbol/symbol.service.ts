@@ -7,6 +7,7 @@ import { MarketDataService } from '@ghostfolio/api/services/market-data/market-d
 import { DATE_FORMAT } from '@ghostfolio/common/helper';
 import { HistoricalDataItem } from '@ghostfolio/common/interfaces';
 import { UserWithSettings } from '@ghostfolio/common/types';
+
 import { Injectable, Logger } from '@nestjs/common';
 import { format, subDays } from 'date-fns';
 
@@ -73,11 +74,21 @@ export class SymbolService {
     date = new Date(),
     symbol
   }: IDataGatheringItem): Promise<IDataProviderHistoricalResponse> {
-    const historicalData = await this.dataProviderService.getHistoricalRaw(
-      [{ dataSource, symbol }],
-      date,
-      date
-    );
+    let historicalData: {
+      [symbol: string]: {
+        [date: string]: IDataProviderHistoricalResponse;
+      };
+    } = {
+      [symbol]: {}
+    };
+
+    try {
+      historicalData = await this.dataProviderService.getHistoricalRaw({
+        dataGatheringItems: [{ dataSource, symbol }],
+        from: date,
+        to: date
+      });
+    } catch {}
 
     return {
       marketPrice:

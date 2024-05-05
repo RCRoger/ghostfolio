@@ -1,6 +1,7 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { UserService } from '@ghostfolio/client/services/user/user.service';
 import { TabConfiguration, User } from '@ghostfolio/common/interfaces';
+
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { DeviceDetectorService } from 'ngx-device-detector';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -32,11 +33,6 @@ export class PortfolioPageComponent implements OnDestroy, OnInit {
               iconName: 'analytics-outline',
               label: $localize`Analysis`,
               path: ['/portfolio']
-            },
-            {
-              iconName: 'wallet-outline',
-              label: $localize`Holdings`,
-              path: ['/portfolio', 'holdings']
             },
             {
               iconName: 'swap-vertical-outline',

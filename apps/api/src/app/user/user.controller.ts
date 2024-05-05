@@ -4,6 +4,7 @@ import { PropertyService } from '@ghostfolio/api/services/property/property.serv
 import { User, UserSettings } from '@ghostfolio/common/interfaces';
 import { hasPermission, permissions } from '@ghostfolio/common/permissions';
 import type { RequestWithUser } from '@ghostfolio/common/types';
+
 import {
   Body,
   Controller,
@@ -123,7 +124,7 @@ export class UserController {
       }
     }
 
-    return await this.userService.updateUserSetting({
+    return this.userService.updateUserSetting({
       userSettings,
       userId: this.request.user.id
     });

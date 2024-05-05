@@ -1,6 +1,3 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute, Router } from '@angular/router';
 import { CreateAccountDto } from '@ghostfolio/api/app/account/create-account.dto';
 import { TransferBalanceDto } from '@ghostfolio/api/app/account/transfer-balance.dto';
 import { UpdateAccountDto } from '@ghostfolio/api/app/account/update-account.dto';
@@ -11,6 +8,10 @@ import { ImpersonationStorageService } from '@ghostfolio/client/services/imperso
 import { UserService } from '@ghostfolio/client/services/user/user.service';
 import { User } from '@ghostfolio/common/interfaces';
 import { hasPermission, permissions } from '@ghostfolio/common/permissions';
+
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Account as AccountModel } from '@prisma/client';
 import { DeviceDetectorService } from 'ngx-device-detector';
 import { EMPTY, Subject, Subscription } from 'rxjs';
@@ -168,7 +169,7 @@ export class AccountsPageComponent implements OnDestroy, OnInit {
     isExcluded,
     name,
     platformId
-  }: AccountModel): void {
+  }: AccountModel) {
     const dialogRef = this.dialog.open(CreateOrUpdateAccountDialog, {
       data: {
         account: {
@@ -188,9 +189,7 @@ export class AccountsPageComponent implements OnDestroy, OnInit {
     dialogRef
       .afterClosed()
       .pipe(takeUntil(this.unsubscribeSubject))
-      .subscribe((data: any) => {
-        const account: UpdateAccountDto = data?.account;
-
+      .subscribe((account: UpdateAccountDto | null) => {
         if (account) {
           this.dataService
             .putAccount(account)
@@ -232,11 +231,13 @@ export class AccountsPageComponent implements OnDestroy, OnInit {
       .afterClosed()
       .pipe(takeUntil(this.unsubscribeSubject))
       .subscribe(() => {
+        this.fetchAccounts();
+
         this.router.navigate(['.'], { relativeTo: this.route });
       });
   }
 
-  private openCreateAccountDialog(): void {
+  private openCreateAccountDialog() {
     const dialogRef = this.dialog.open(CreateOrUpdateAccountDialog, {
       data: {
         account: {
@@ -255,9 +256,7 @@ export class AccountsPageComponent implements OnDestroy, OnInit {
     dialogRef
       .afterClosed()
       .pipe(takeUntil(this.unsubscribeSubject))
-      .subscribe((data: any) => {
-        const account: CreateAccountDto = data?.account;
-
+      .subscribe((account: CreateAccountDto | null) => {
         if (account) {
           this.dataService
             .postAccount(account)
@@ -278,7 +277,7 @@ export class AccountsPageComponent implements OnDestroy, OnInit {
       });
   }
 
-  private openTransferBalanceDialog(): void {
+  private openTransferBalanceDialog() {
     const dialogRef = this.dialog.open(TransferBalanceDialog, {
       data: {
         accounts: this.accounts

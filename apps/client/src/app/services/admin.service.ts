@@ -1,6 +1,3 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { SortDirection } from '@angular/material/sort';
 import { UpdateAssetProfileDto } from '@ghostfolio/api/app/admin/update-asset-profile.dto';
 import { UpdateBulkMarketDataDto } from '@ghostfolio/api/app/admin/update-bulk-market-data.dto';
 import { CreatePlatformDto } from '@ghostfolio/api/app/platform/create-platform.dto';
@@ -18,6 +15,10 @@ import {
   Filter,
   UniqueAsset
 } from '@ghostfolio/common/interfaces';
+
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { SortDirection } from '@angular/material/sort';
 import { DataSource, MarketData, Platform, Tag } from '@prisma/client';
 import { JobStatus } from 'bull';
 import { format, parseISO } from 'date-fns';
@@ -69,6 +70,10 @@ export class AdminService {
 
   public deleteTag(aId: string) {
     return this.http.delete<void>(`/api/v1/tag/${aId}`);
+  }
+
+  public executeJob(aId: string) {
+    return this.http.get<void>(`/api/v1/admin/queue/job/${aId}/execute`);
   }
 
   public fetchAdminData() {
@@ -187,17 +192,14 @@ export class AdminService {
 
   public fetchSymbolForDate({
     dataSource,
-    date,
+    dateString,
     symbol
   }: {
     dataSource: DataSource;
-    date: Date;
+    dateString: string;
     symbol: string;
   }) {
-    const url = `/api/v1/symbol/${dataSource}/${symbol}/${format(
-      date,
-      DATE_FORMAT
-    )}`;
+    const url = `/api/v1/symbol/${dataSource}/${symbol}/${dateString}`;
 
     return this.http.get<IDataProviderHistoricalResponse>(url);
   }
@@ -213,7 +215,8 @@ export class AdminService {
     scraperConfiguration,
     sectors,
     symbol,
-    symbolMapping
+    symbolMapping,
+    url
   }: UniqueAsset & UpdateAssetProfileDto) {
     return this.http.patch<EnhancedSymbolProfile>(
       `/api/v1/admin/profile-data/${dataSource}/${symbol}`,
@@ -226,7 +229,8 @@ export class AdminService {
         name,
         scraperConfiguration,
         sectors,
-        symbolMapping
+        symbolMapping,
+        url
       }
     );
   }

@@ -1,22 +1,25 @@
-import { join } from 'path';
-
+import { EventsModule } from '@ghostfolio/api/events/events.module';
 import { ConfigurationModule } from '@ghostfolio/api/services/configuration/configuration.module';
 import { CronService } from '@ghostfolio/api/services/cron.service';
 import { DataGatheringModule } from '@ghostfolio/api/services/data-gathering/data-gathering.module';
 import { DataProviderModule } from '@ghostfolio/api/services/data-provider/data-provider.module';
 import { ExchangeRateDataModule } from '@ghostfolio/api/services/exchange-rate-data/exchange-rate-data.module';
 import { PrismaModule } from '@ghostfolio/api/services/prisma/prisma.module';
+import { PropertyModule } from '@ghostfolio/api/services/property/property.module';
 import { TwitterBotModule } from '@ghostfolio/api/services/twitter-bot/twitter-bot.module';
 import {
   DEFAULT_LANGUAGE_CODE,
   SUPPORTED_LANGUAGE_CODES
 } from '@ghostfolio/common/config';
+
 import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { StatusCodes } from 'http-status-codes';
+import { join } from 'path';
 
 import { AccessModule } from './access/access.module';
 import { AccountModule } from './account/account.module';
@@ -43,6 +46,7 @@ import { TagModule } from './tag/tag.module';
 import { UserModule } from './user/user.module';
 
 @Module({
+  controllers: [AppController],
   imports: [
     AdminModule,
     AccessModule,
@@ -52,6 +56,7 @@ import { UserModule } from './user/user.module';
     BenchmarkModule,
     BullModule.forRoot({
       redis: {
+        db: parseInt(process.env.REDIS_DB ?? '0', 10),
         host: process.env.REDIS_HOST,
         port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
         password: process.env.REDIS_PASSWORD
@@ -62,6 +67,8 @@ import { UserModule } from './user/user.module';
     ConfigurationModule,
     DataGatheringModule,
     DataProviderModule,
+    EventEmitterModule.forRoot(),
+    EventsModule,
     ExchangeRateModule,
     ExchangeRateDataModule,
     ExportModule,
@@ -73,6 +80,7 @@ import { UserModule } from './user/user.module';
     PlatformModule,
     PortfolioModule,
     PrismaModule,
+    PropertyModule,
     RedisCacheModule,
     ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({
@@ -106,7 +114,6 @@ import { UserModule } from './user/user.module';
     TwitterBotModule,
     UserModule
   ],
-  controllers: [AppController],
   providers: [CronService]
 })
 export class AppModule {}

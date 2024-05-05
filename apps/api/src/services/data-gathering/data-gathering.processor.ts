@@ -8,6 +8,7 @@ import {
 } from '@ghostfolio/common/config';
 import { DATE_FORMAT, getStartOfUtcDate } from '@ghostfolio/common/helper';
 import { UniqueAsset } from '@ghostfolio/common/interfaces';
+
 import { Process, Processor } from '@nestjs/bull';
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -36,7 +37,17 @@ export class DataGatheringProcessor {
   @Process({ concurrency: 1, name: GATHER_ASSET_PROFILE_PROCESS })
   public async gatherAssetProfile(job: Job<UniqueAsset>) {
     try {
+      Logger.log(
+        `Asset profile data gathering has been started for ${job.data.symbol} (${job.data.dataSource})`,
+        `DataGatheringProcessor (${GATHER_ASSET_PROFILE_PROCESS})`
+      );
+
       await this.dataGatheringService.gatherAssetProfiles([job.data]);
+
+      Logger.log(
+        `Asset profile data gathering has been completed for ${job.data.symbol} (${job.data.dataSource})`,
+        `DataGatheringProcessor (${GATHER_ASSET_PROFILE_PROCESS})`
+      );
     } catch (error) {
       Logger.error(
         error,
@@ -61,11 +72,11 @@ export class DataGatheringProcessor {
         `DataGatheringProcessor (${GATHER_HISTORICAL_MARKET_DATA_PROCESS})`
       );
 
-      const historicalData = await this.dataProviderService.getHistoricalRaw(
-        [{ dataSource, symbol }],
-        currentDate,
-        new Date()
-      );
+      const historicalData = await this.dataProviderService.getHistoricalRaw({
+        dataGatheringItems: [{ dataSource, symbol }],
+        from: currentDate,
+        to: new Date()
+      });
 
       const data: Prisma.MarketDataUpdateInput[] = [];
       let lastMarketPrice: number;

@@ -1,14 +1,10 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute, Router } from '@angular/router';
-import { PositionDetailDialogParams } from '@ghostfolio/client/components/position/position-detail-dialog/interfaces/interfaces';
-import { PositionDetailDialog } from '@ghostfolio/client/components/position/position-detail-dialog/position-detail-dialog.component';
+import { PositionDetailDialogParams } from '@ghostfolio/client/components/position-detail-dialog/interfaces/interfaces';
+import { PositionDetailDialog } from '@ghostfolio/client/components/position-detail-dialog/position-detail-dialog.component';
 import { ToggleComponent } from '@ghostfolio/client/components/toggle/toggle.component';
 import { DataService } from '@ghostfolio/client/services/data.service';
 import { ImpersonationStorageService } from '@ghostfolio/client/services/impersonation-storage.service';
 import { UserService } from '@ghostfolio/client/services/user/user.service';
 import {
-  Filter,
   HistoricalDataItem,
   PortfolioInvestments,
   PortfolioPerformance,
@@ -17,14 +13,18 @@ import {
 } from '@ghostfolio/common/interfaces';
 import { InvestmentItem } from '@ghostfolio/common/interfaces/investment-item.interface';
 import { hasPermission, permissions } from '@ghostfolio/common/permissions';
-import { DateRange, GroupBy, ToggleOption } from '@ghostfolio/common/types';
+import { GroupBy, ToggleOption } from '@ghostfolio/common/types';
 import { translate } from '@ghostfolio/ui/i18n';
-import { AssetClass, DataSource, SymbolProfile } from '@prisma/client';
+
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute, Router } from '@angular/router';
+import { DataSource, SymbolProfile } from '@prisma/client';
 import { differenceInDays } from 'date-fns';
 import { isNumber, sortBy } from 'lodash';
 import { DeviceDetectorService } from 'ngx-device-detector';
 import { Subject } from 'rxjs';
-import { distinctUntilChanged, map, takeUntil } from 'rxjs/operators';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'gf-analysis-page',
@@ -32,8 +32,7 @@ import { distinctUntilChanged, map, takeUntil } from 'rxjs/operators';
   templateUrl: './analysis-page.html'
 })
 export class AnalysisPageComponent implements OnDestroy, OnInit {
-  public activeFilters: Filter[] = [];
-  public allFilters: Filter[];
+  public benchmark: Partial<SymbolProfile>;
   public benchmarkDataItems: HistoricalDataItem[] = [];
   public benchmarks: Partial<SymbolProfile>[];
   public bottom3: Position[];
@@ -42,14 +41,15 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
   public deviceType: string;
   public dividendsByGroup: InvestmentItem[];
   public dividendTimelineDataLabel = $localize`Dividend`;
-  public filters$ = new Subject<Filter[]>();
   public firstOrderDate: Date;
   public hasImpersonationId: boolean;
   public investments: InvestmentItem[];
   public investmentTimelineDataLabel = $localize`Investment`;
   public investmentsByGroup: InvestmentItem[];
   public isLoadingBenchmarkComparator: boolean;
+  public isLoadingDividendTimelineChart: boolean;
   public isLoadingInvestmentChart: boolean;
+  public isLoadingInvestmentTimelineChart: boolean;
   public mode: GroupBy = 'month';
   public modeOptions: ToggleOption[] = [
     { label: $localize`Monthly`, value: 'month' },
@@ -58,7 +58,6 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
   public performance: PortfolioPerformance;
   public performanceDataItems: HistoricalDataItem[];
   public performanceDataItemsInPercentage: HistoricalDataItem[];
-  public placeholder = '';
   public portfolioEvolutionDataLabel = $localize`Investment`;
   public streaks: PortfolioInvestments['streaks'];
   public top3: Position[];
@@ -81,7 +80,7 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
     const { benchmarks } = this.dataService.fetchInfo();
     this.benchmarks = benchmarks;
 
-    route.queryParams
+    this.route.queryParams
       .pipe(takeUntil(this.unsubscribeSubject))
       .subscribe((params) => {
         if (
@@ -118,60 +117,15 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
         this.hasImpersonationId = !!impersonationId;
       });
 
-    this.filters$
-      .pipe(
-        distinctUntilChanged(),
-        map((filters) => {
-          this.activeFilters = filters;
-          this.placeholder =
-            this.activeFilters.length <= 0
-              ? $localize`Filter by account or tag...`
-              : '';
-
-          this.update();
-        }),
-        takeUntil(this.unsubscribeSubject)
-      )
-      .subscribe(() => {});
-
     this.userService.stateChanged
       .pipe(takeUntil(this.unsubscribeSubject))
       .subscribe((state) => {
         if (state?.user) {
           this.user = state.user;
 
-          const accountFilters: Filter[] = this.user.accounts.map(
-            ({ id, name }) => {
-              return {
-                id,
-                label: name,
-                type: 'ACCOUNT'
-              };
-            }
-          );
-
-          const assetClassFilters: Filter[] = [];
-          for (const assetClass of Object.keys(AssetClass)) {
-            assetClassFilters.push({
-              id: assetClass,
-              label: translate(assetClass),
-              type: 'ASSET_CLASS'
-            });
-          }
-
-          const tagFilters: Filter[] = this.user.tags.map(({ id, name }) => {
-            return {
-              id,
-              label: translate(name),
-              type: 'TAG'
-            };
+          this.benchmark = this.benchmarks.find(({ id }) => {
+            return id === this.user.settings?.benchmark;
           });
-
-          this.allFilters = [
-            ...accountFilters,
-            ...assetClassFilters,
-            ...tagFilters
-          ];
 
           this.update();
         }
@@ -181,24 +135,6 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
   public onChangeBenchmark(symbolProfileId: string) {
     this.dataService
       .putUserSetting({ benchmark: symbolProfileId })
-      .pipe(takeUntil(this.unsubscribeSubject))
-      .subscribe(() => {
-        this.userService.remove();
-
-        this.userService
-          .get()
-          .pipe(takeUntil(this.unsubscribeSubject))
-          .subscribe((user) => {
-            this.user = user;
-
-            this.changeDetectorRef.markForCheck();
-          });
-      });
-  }
-
-  public onChangeDateRange(dateRange: DateRange) {
-    this.dataService
-      .putUserSetting({ dateRange })
       .pipe(takeUntil(this.unsubscribeSubject))
       .subscribe(() => {
         this.userService.remove();
@@ -225,12 +161,12 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
   }
 
   private fetchDividendsAndInvestments() {
+    this.isLoadingDividendTimelineChart = true;
+    this.isLoadingInvestmentTimelineChart = true;
+
     this.dataService
       .fetchDividends({
-        filters:
-          this.activeFilters.length > 0
-            ? this.activeFilters
-            : this.userService.getFilters(),
+        filters: this.userService.getFilters(),
         groupBy: this.mode,
         range: this.user?.settings?.dateRange
       })
@@ -238,15 +174,14 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
       .subscribe(({ dividends }) => {
         this.dividendsByGroup = dividends;
 
+        this.isLoadingDividendTimelineChart = false;
+
         this.changeDetectorRef.markForCheck();
       });
 
     this.dataService
       .fetchInvestments({
-        filters:
-          this.activeFilters.length > 0
-            ? this.activeFilters
-            : this.userService.getFilters(),
+        filters: this.userService.getFilters(),
         groupBy: this.mode,
         range: this.user?.settings?.dateRange
       })
@@ -270,6 +205,8 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
             : this.streaks?.longestStreak === 1
               ? translate('MONTH')
               : translate('MONTHS');
+
+        this.isLoadingInvestmentTimelineChart = false;
 
         this.changeDetectorRef.markForCheck();
       });
@@ -321,10 +258,7 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
 
     this.dataService
       .fetchPortfolioPerformance({
-        filters:
-          this.activeFilters.length > 0
-            ? this.activeFilters
-            : this.userService.getFilters(),
+        filters: this.userService.getFilters(),
         range: this.user?.settings?.dateRange
       })
       .pipe(takeUntil(this.unsubscribeSubject))
@@ -341,23 +275,28 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
           index,
           {
             date,
-            netPerformanceInPercentage,
-            totalInvestment,
-            value,
-            valueInPercentage
+            netPerformanceInPercentageWithCurrencyEffect,
+            totalInvestmentValueWithCurrencyEffect,
+            valueInPercentage,
+            valueWithCurrencyEffect
           }
         ] of chart.entries()) {
           if (index > 0 || this.user?.settings?.dateRange === 'max') {
             // Ignore first item where value is 0
-            this.investments.push({ date, investment: totalInvestment });
+            this.investments.push({
+              date,
+              investment: totalInvestmentValueWithCurrencyEffect
+            });
             this.performanceDataItems.push({
               date,
-              value: isNumber(value) ? value : valueInPercentage
+              value: isNumber(valueWithCurrencyEffect)
+                ? valueWithCurrencyEffect
+                : valueInPercentage
             });
           }
           this.performanceDataItemsInPercentage.push({
             date,
-            value: netPerformanceInPercentage
+            value: netPerformanceInPercentageWithCurrencyEffect
           });
         }
 
@@ -370,19 +309,16 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
 
     this.dataService
       .fetchPositions({
-        filters:
-          this.activeFilters.length > 0
-            ? this.activeFilters
-            : this.userService.getFilters(),
+        filters: this.userService.getFilters(),
         range: this.user?.settings?.dateRange
       })
       .pipe(takeUntil(this.unsubscribeSubject))
       .subscribe(({ positions }) => {
         const positionsSorted = sortBy(
-          positions.filter(({ netPerformancePercentage }) => {
-            return isNumber(netPerformancePercentage);
+          positions.filter(({ netPerformancePercentageWithCurrencyEffect }) => {
+            return isNumber(netPerformancePercentageWithCurrencyEffect);
           }),
-          'netPerformancePercentage'
+          'netPerformancePercentageWithCurrencyEffect'
         ).reverse();
 
         this.top3 = positionsSorted.slice(0, 3);
@@ -416,6 +352,7 @@ export class AnalysisPageComponent implements OnDestroy, OnInit {
           .fetchBenchmarkBySymbol({
             dataSource,
             symbol,
+            range: this.user?.settings?.dateRange,
             startDate: this.firstOrderDate
           })
           .pipe(takeUntil(this.unsubscribeSubject))

@@ -8,15 +8,18 @@ export interface PortfolioPosition {
   allocationInPercentage: number;
   assetClass?: AssetClass;
   assetClassLabel?: string;
-  assetSubClass?: AssetSubClass | 'CASH';
+  assetSubClass?: AssetSubClass;
   assetSubClassLabel?: string;
   countries: Country[];
   currency: string;
   dataSource: DataSource;
   dateOfFirstActivity: Date;
+  dividend: number;
   exchange?: string;
   grossPerformance: number;
   grossPerformancePercent: number;
+  grossPerformancePercentWithCurrencyEffect: number;
+  grossPerformanceWithCurrencyEffect: number;
   investment: number;
   marketChange?: number;
   marketChangePercent?: number;
@@ -27,6 +30,8 @@ export interface PortfolioPosition {
   name: string;
   netPerformance: number;
   netPerformancePercent: number;
+  netPerformancePercentWithCurrencyEffect: number;
+  netPerformanceWithCurrencyEffect: number;
   quantity: number;
   sectors: Sector[];
   symbol: string;

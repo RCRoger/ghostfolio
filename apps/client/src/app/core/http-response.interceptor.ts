@@ -1,3 +1,9 @@
+import { DataService } from '@ghostfolio/client/services/data.service';
+import { TokenStorageService } from '@ghostfolio/client/services/token-storage.service';
+import { WebAuthnService } from '@ghostfolio/client/services/web-authn.service';
+import { InfoItem } from '@ghostfolio/common/interfaces';
+import { hasPermission, permissions } from '@ghostfolio/common/permissions';
+
 import {
   HTTP_INTERCEPTORS,
   HttpErrorResponse,
@@ -13,11 +19,6 @@ import {
   TextOnlySnackBar
 } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { DataService } from '@ghostfolio/client/services/data.service';
-import { TokenStorageService } from '@ghostfolio/client/services/token-storage.service';
-import { WebAuthnService } from '@ghostfolio/client/services/web-authn.service';
-import { InfoItem } from '@ghostfolio/common/interfaces';
-import { hasPermission, permissions } from '@ghostfolio/common/permissions';
 import { StatusCodes } from 'http-status-codes';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
@@ -62,9 +63,11 @@ export class HttpResponseInterceptor implements HttpInterceptor {
                 undefined,
                 { duration: 6000 }
               );
-            } else if (!error.url.endsWith('auth/anonymous')) {
+            } else if (!error.url.includes('/auth')) {
               this.snackBarRef = this.snackBar.open(
-                $localize`This feature requires a subscription.`,
+                this.hasPermissionForSubscription
+                  ? $localize`This feature requires a subscription.`
+                  : $localize`This action is not allowed.`,
                 this.hasPermissionForSubscription
                   ? $localize`Upgrade Plan`
                   : undefined,
@@ -96,6 +99,16 @@ export class HttpResponseInterceptor implements HttpInterceptor {
 
             this.snackBarRef.onAction().subscribe(() => {
               window.location.reload();
+            });
+          }
+        } else if (error.status === StatusCodes.TOO_MANY_REQUESTS) {
+          if (!this.snackBarRef) {
+            this.snackBarRef = this.snackBar.open(
+              $localize`Oops! It looks like you’re making too many requests. Please slow down a bit.`
+            );
+
+            this.snackBarRef.afterDismissed().subscribe(() => {
+              this.snackBarRef = undefined;
             });
           }
         } else if (error.status === StatusCodes.UNAUTHORIZED) {

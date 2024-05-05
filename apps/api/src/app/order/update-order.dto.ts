@@ -9,6 +9,7 @@ import { Transform, TransformFnParams } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
+  IsISO4217CurrencyCode,
   IsISO8601,
   IsNumber,
   IsOptional,
@@ -37,8 +38,12 @@ export class UpdateOrderDto {
   )
   comment?: string;
 
-  @IsString()
+  @IsISO4217CurrencyCode()
   currency: string;
+
+  @IsISO4217CurrencyCode()
+  @IsOptional()
+  customCurrency?: string;
 
   @IsString()
   dataSource: DataSource;

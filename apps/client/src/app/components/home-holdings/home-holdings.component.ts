@@ -1,20 +1,19 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute, Router } from '@angular/router';
-import { PositionDetailDialog } from '@ghostfolio/client/components/position/position-detail-dialog/position-detail-dialog.component';
-import { ToggleComponent } from '@ghostfolio/client/components/toggle/toggle.component';
+import { PositionDetailDialogParams } from '@ghostfolio/client/components/position-detail-dialog/interfaces/interfaces';
+import { PositionDetailDialog } from '@ghostfolio/client/components/position-detail-dialog/position-detail-dialog.component';
 import { DataService } from '@ghostfolio/client/services/data.service';
 import { ImpersonationStorageService } from '@ghostfolio/client/services/impersonation-storage.service';
 import { UserService } from '@ghostfolio/client/services/user/user.service';
-import { Position, User } from '@ghostfolio/common/interfaces';
+import { PortfolioPosition, User } from '@ghostfolio/common/interfaces';
 import { hasPermission, permissions } from '@ghostfolio/common/permissions';
-import { DateRange } from '@ghostfolio/common/types';
+import { HoldingType, ToggleOption } from '@ghostfolio/common/types';
+
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DataSource } from '@prisma/client';
 import { DeviceDetectorService } from 'ngx-device-detector';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-
-import { PositionDetailDialogParams } from '../position/position-detail-dialog/interfaces/interfaces';
 
 @Component({
   selector: 'gf-home-holdings',
@@ -22,11 +21,15 @@ import { PositionDetailDialogParams } from '../position/position-detail-dialog/i
   templateUrl: './home-holdings.html'
 })
 export class HomeHoldingsComponent implements OnDestroy, OnInit {
-  public dateRangeOptions = ToggleComponent.DEFAULT_DATE_RANGE_OPTIONS;
   public deviceType: string;
   public hasImpersonationId: boolean;
   public hasPermissionToCreateOrder: boolean;
-  public positions: Position[];
+  public holdings: PortfolioPosition[];
+  public holdingType: HoldingType = 'ACTIVE';
+  public holdingTypeOptions: ToggleOption[] = [
+    { label: $localize`Active`, value: 'ACTIVE' },
+    { label: $localize`Closed`, value: 'CLOSED' }
+  ];
   public user: User;
 
   private unsubscribeSubject = new Subject<void>();
@@ -55,6 +58,17 @@ export class HomeHoldingsComponent implements OnDestroy, OnInit {
           });
         }
       });
+  }
+
+  public ngOnInit() {
+    this.deviceType = this.deviceService.getDeviceInfo().deviceType;
+
+    this.impersonationStorageService
+      .onChangeHasImpersonation()
+      .pipe(takeUntil(this.unsubscribeSubject))
+      .subscribe((impersonationId) => {
+        this.hasImpersonationId = !!impersonationId;
+      });
 
     this.userService.stateChanged
       .pipe(takeUntil(this.unsubscribeSubject))
@@ -67,43 +81,51 @@ export class HomeHoldingsComponent implements OnDestroy, OnInit {
             permissions.createOrder
           );
 
-          this.update();
+          this.holdings = undefined;
+
+          this.fetchHoldings()
+            .pipe(takeUntil(this.unsubscribeSubject))
+            .subscribe(({ holdings }) => {
+              this.holdings = holdings;
+
+              this.changeDetectorRef.markForCheck();
+            });
+
+          this.changeDetectorRef.markForCheck();
         }
       });
   }
 
-  public ngOnInit() {
-    this.deviceType = this.deviceService.getDeviceInfo().deviceType;
+  public onChangeHoldingType(aHoldingType: HoldingType) {
+    this.holdingType = aHoldingType;
 
-    this.impersonationStorageService
-      .onChangeHasImpersonation()
+    this.holdings = undefined;
+
+    this.fetchHoldings()
       .pipe(takeUntil(this.unsubscribeSubject))
-      .subscribe((impersonationId) => {
-        this.hasImpersonationId = !!impersonationId;
-      });
-  }
+      .subscribe(({ holdings }) => {
+        this.holdings = holdings;
 
-  public onChangeDateRange(dateRange: DateRange) {
-    this.dataService
-      .putUserSetting({ dateRange })
-      .pipe(takeUntil(this.unsubscribeSubject))
-      .subscribe(() => {
-        this.userService.remove();
-
-        this.userService
-          .get()
-          .pipe(takeUntil(this.unsubscribeSubject))
-          .subscribe((user) => {
-            this.user = user;
-
-            this.changeDetectorRef.markForCheck();
-          });
+        this.changeDetectorRef.markForCheck();
       });
   }
 
   public ngOnDestroy() {
     this.unsubscribeSubject.next();
     this.unsubscribeSubject.complete();
+  }
+
+  private fetchHoldings() {
+    const filters = this.userService.getFilters();
+
+    if (this.holdingType === 'CLOSED') {
+      filters.push({ id: 'CLOSED', type: 'HOLDING_TYPE' });
+    }
+
+    return this.dataService.fetchPortfolioHoldings({
+      filters,
+      range: this.user?.settings?.dateRange
+    });
   }
 
   private openPositionDialog({
@@ -145,20 +167,5 @@ export class HomeHoldingsComponent implements OnDestroy, OnInit {
             this.router.navigate(['.'], { relativeTo: this.route });
           });
       });
-  }
-
-  private update() {
-    this.positions = undefined;
-
-    this.dataService
-      .fetchPositions({ range: this.user?.settings?.dateRange })
-      .pipe(takeUntil(this.unsubscribeSubject))
-      .subscribe((response) => {
-        this.positions = response.positions;
-
-        this.changeDetectorRef.markForCheck();
-      });
-
-    this.changeDetectorRef.markForCheck();
   }
 }

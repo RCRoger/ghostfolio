@@ -1,3 +1,11 @@
+import { getTooltipOptions } from '@ghostfolio/common/chart-helper';
+import { UNKNOWN_KEY } from '@ghostfolio/common/config';
+import { getLocale, getTextColor } from '@ghostfolio/common/helper';
+import { PortfolioPosition, UniqueAsset } from '@ghostfolio/common/interfaces';
+import { ColorScheme } from '@ghostfolio/common/types';
+import { translate } from '@ghostfolio/ui/i18n';
+
+import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -10,14 +18,8 @@ import {
   Output,
   ViewChild
 } from '@angular/core';
-import { getTooltipOptions } from '@ghostfolio/common/chart-helper';
-import { UNKNOWN_KEY } from '@ghostfolio/common/config';
-import { getTextColor } from '@ghostfolio/common/helper';
-import { PortfolioPosition, UniqueAsset } from '@ghostfolio/common/interfaces';
-import { ColorScheme } from '@ghostfolio/common/types';
-import { translate } from '@ghostfolio/ui/i18n';
 import { DataSource } from '@prisma/client';
-import Big from 'big.js';
+import { Big } from 'big.js';
 import { ChartConfiguration, Tooltip } from 'chart.js';
 import { LinearScale } from 'chart.js';
 import { ArcElement } from 'chart.js';
@@ -25,14 +27,17 @@ import { DoughnutController } from 'chart.js';
 import { Chart } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import * as Color from 'color';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 @Component({
-  selector: 'gf-portfolio-proportion-chart',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './portfolio-proportion-chart.component.html',
-  styleUrls: ['./portfolio-proportion-chart.component.scss']
+  imports: [CommonModule, NgxSkeletonLoaderModule],
+  selector: 'gf-portfolio-proportion-chart',
+  standalone: true,
+  styleUrls: ['./portfolio-proportion-chart.component.scss'],
+  templateUrl: './portfolio-proportion-chart.component.html'
 })
-export class PortfolioProportionChartComponent
+export class GfPortfolioProportionChartComponent
   implements AfterViewInit, OnChanges, OnDestroy
 {
   @Input() baseCurrency: string;
@@ -40,7 +45,7 @@ export class PortfolioProportionChartComponent
   @Input() cursor: string;
   @Input() isInPercent = false;
   @Input() keys: string[] = [];
-  @Input() locale = '';
+  @Input() locale = getLocale();
   @Input() maxItems?: number;
   @Input() showLabels = false;
   @Input() positions: {

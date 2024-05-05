@@ -7,6 +7,7 @@ import {
 } from '@ghostfolio/common/interfaces';
 import { Country } from '@ghostfolio/common/interfaces/country.interface';
 import { Sector } from '@ghostfolio/common/interfaces/sector.interface';
+
 import { Injectable } from '@nestjs/common';
 import { Prisma, SymbolProfile, SymbolProfileOverrides } from '@prisma/client';
 import { continents, countries } from 'countries-list';
@@ -96,7 +97,9 @@ export class SymbolProfileService {
     scraperConfiguration,
     sectors,
     symbol,
-    symbolMapping
+    symbolMapping,
+    SymbolProfileOverrides,
+    url
   }: Prisma.SymbolProfileUpdateInput & UniqueAsset) {
     return this.prismaService.symbolProfile.update({
       data: {
@@ -108,7 +111,9 @@ export class SymbolProfileService {
         name,
         scraperConfiguration,
         sectors,
-        symbolMapping
+        symbolMapping,
+        SymbolProfileOverrides,
+        url
       },
       where: { dataSource_symbol: { dataSource, symbol } }
     });
@@ -188,9 +193,8 @@ export class SymbolProfileService {
       return {
         code,
         weight,
-        continent:
-          continents[countries[code as string]?.continent] ?? UNKNOWN_KEY,
-        name: countries[code as string]?.name ?? UNKNOWN_KEY
+        continent: continents[countries[code]?.continent] ?? UNKNOWN_KEY,
+        name: countries[code]?.name ?? UNKNOWN_KEY
       };
     });
   }

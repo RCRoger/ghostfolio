@@ -1,7 +1,7 @@
 import * as currencies from '@dinero.js/currencies';
 import { NumberParser } from '@internationalized/number';
-import { DataSource, MarketData } from '@prisma/client';
-import Big from 'big.js';
+import { DataSource, MarketData, Type as ActivityType } from '@prisma/client';
+import { Big } from 'big.js';
 import {
   getDate,
   getMonth,
@@ -11,7 +11,7 @@ import {
   parseISO,
   subDays
 } from 'date-fns';
-import { de, es, fr, it, nl, pl, pt, tr } from 'date-fns/locale';
+import { de, es, fr, it, nl, pl, pt, tr, zhCN } from 'date-fns/locale';
 
 import { ghostfolioScraperApiSymbolPrefix, locale } from './config';
 import { Benchmark, UniqueAsset } from './interfaces';
@@ -138,6 +138,10 @@ export function extractNumberFromString({
   }
 }
 
+export function getAllActivityTypes(): ActivityType[] {
+  return Object.values(ActivityType);
+}
+
 export function getAssetProfileIdentifier({ dataSource, symbol }: UniqueAsset) {
   return `${dataSource}-${symbol}`;
 }
@@ -174,6 +178,8 @@ export function getDateFnsLocale(aLanguageCode: string) {
     return pt;
   } else if (aLanguageCode === 'tr') {
     return tr;
+  } else if (aLanguageCode === 'zh') {
+    return zhCN;
   }
 
   return undefined;
@@ -217,9 +223,7 @@ export function getEmojiFlag(aCountryCode: string) {
 }
 
 export function getLocale() {
-  return navigator.languages?.length
-    ? navigator.languages[0]
-    : navigator.language ?? locale;
+  return navigator.language ?? locale;
 }
 
 export function getNumberFormatDecimal(aLocale?: string) {
@@ -230,7 +234,7 @@ export function getNumberFormatDecimal(aLocale?: string) {
   }).value;
 }
 
-export function getNumberFormatGroup(aLocale?: string) {
+export function getNumberFormatGroup(aLocale = getLocale()) {
   const formatObject = new Intl.NumberFormat(aLocale).formatToParts(9999.99);
 
   return formatObject.find((object) => {
@@ -395,6 +399,6 @@ export function resolveMarketCondition(
   } else if (aMarketCondition === 'BEAR_MARKET') {
     return { emoji: '🐻' };
   } else {
-    return { emoji: '⚪' };
+    return { emoji: undefined };
   }
 }

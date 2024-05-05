@@ -115,6 +115,10 @@
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
   <url>
+    <loc>https://ghostfol.io/de/ressourcen/personal-finance-tools/open-source-alternative-zu-fina</loc>
+    <lastmod>${currentDate}T00:00:00+00:00</lastmod>
+  </url>
+  <url>
     <loc>https://ghostfol.io/de/ressourcen/personal-finance-tools/open-source-alternative-zu-finary</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
@@ -367,6 +371,14 @@
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
   <url>
+    <loc>https://ghostfol.io/en/saas</loc>
+    <lastmod>${currentDate}T00:00:00+00:00</lastmod>
+  </url>
+  <url>
+    <loc>https://ghostfol.io/en/self-hosting</loc>
+    <lastmod>${currentDate}T00:00:00+00:00</lastmod>
+  </url>
+  <url>
     <loc>https://ghostfol.io/en/features</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
@@ -454,6 +466,10 @@
   </url>
   <url>
     <loc>https://ghostfol.io/en/resources/personal-finance-tools/open-source-alternative-to-exirio</loc>
+    <lastmod>${currentDate}T00:00:00+00:00</lastmod>
+  </url>
+  <url>
+    <loc>https://ghostfol.io/en/resources/personal-finance-tools/open-source-alternative-to-fina</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
   <url>
@@ -819,6 +835,10 @@
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
   <url>
+    <loc>https://ghostfol.io/it/risorse/personal-finance-tools/alternativa-open-source-a-fina</loc>
+    <lastmod>${currentDate}T00:00:00+00:00</lastmod>
+  </url>
+  <url>
     <loc>https://ghostfol.io/it/risorse/personal-finance-tools/alternativa-open-source-a-finary</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
@@ -1027,6 +1047,10 @@
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
   <url>
+    <loc>https://ghostfol.io/nl/bronnen/personal-finance-tools/open-source-alternatief-voor-fina</loc>
+    <lastmod>${currentDate}T00:00:00+00:00</lastmod>
+  </url>
+  <url>
     <loc>https://ghostfol.io/nl/bronnen/personal-finance-tools/open-source-alternatief-voor-finary</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
@@ -1208,10 +1232,12 @@
     <loc>https://ghostfol.io/nl/veelgestelde-vragen</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
+  <!--
   <url>
     <loc>https://ghostfol.io/pl</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
+  -->
   <url>
     <loc>https://ghostfol.io/pt</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
@@ -1272,4 +1298,10 @@
     <loc>https://ghostfol.io/tr</loc>
     <lastmod>${currentDate}T00:00:00+00:00</lastmod>
   </url>
+  <!--
+  <url>
+    <loc>https://ghostfol.io/zh</loc>
+    <lastmod>${currentDate}T00:00:00+00:00</lastmod>
+  </url>
+  -->
 </urlset>
